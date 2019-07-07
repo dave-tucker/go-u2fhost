@@ -1,27 +1,29 @@
 package hid
 
 import (
-	"github.com/marshallbrekka/go.hid"
+	"fmt"
+	"time"
+
+	"github.com/karalabe/hid"
 )
 
 type RawHidDevice struct {
-	Device *hid.DeviceInfo
+	Device hid.DeviceInfo
 	Handle *hid.Device
 }
 
-func newRawHidDevice(dev *hid.DeviceInfo) *RawHidDevice {
+func newRawHidDevice(dev hid.DeviceInfo) *RawHidDevice {
 	return &RawHidDevice{
 		Device: dev,
 	}
 }
 
 func (dev *RawHidDevice) Open() error {
-	handle, err := hid.OpenPath(dev.Device.Path)
+	handle, err := dev.Device.Open()
 	if err != nil {
 		return err
 	}
 	dev.Handle = handle
-	handle.SetReadWriteNonBlocking(true)
 	return nil
 }
 
@@ -37,5 +39,24 @@ func (dev *RawHidDevice) Write(data []byte) (int, error) {
 }
 
 func (dev *RawHidDevice) ReadTimeout(response []byte, timeout int) (int, error) {
-	return dev.Handle.ReadTimeout(response, timeout)
+	bytesRead := 0
+	var err error
+	done := make(chan bool, 1)
+	defer close(done)
+
+	go func() {
+		bytesRead, err = dev.Handle.Read(response)
+		done <- true
+	}()
+
+	timer := time.NewTimer(time.Duration(timeout) * time.Second)
+	defer timer.Stop()
+
+	select {
+	case <-done:
+		return bytesRead, err
+	case <-timer.C:
+		return bytesRead, fmt.Errorf("timed out")
+	}
+
 }

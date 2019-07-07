@@ -8,8 +8,8 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/karalabe/hid"
 	butil "github.com/marshallbrekka/go-u2fhost/bytes"
-	"github.com/marshallbrekka/go.hid"
 )
 
 // The HID message structure is defined at the following url.
@@ -42,7 +42,7 @@ type Device interface {
 // Returns an array of available HID devices.
 func Devices() []*HidDevice {
 	u2fDevices := []*HidDevice{}
-	devices, _ := hid.Enumerate(0x0, 0x0)
+	devices := hid.Enumerate(0x0, 0x0)
 	for _, device := range devices {
 		// need to add some custom code to get hid usage from linux.
 		// use the firefox u2f extension codebase as a reference.
